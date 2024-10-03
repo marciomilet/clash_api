@@ -11,7 +11,7 @@ url = 'https://api.clashroyale.com/v1/'
 connection_string = os.getenv('connection')
 client = MongoClient(connection_string)
 db_connection = client['ClashRoyale']
-collection = db_connection.get_collection('Clash')
+
 
 
 
@@ -21,6 +21,7 @@ headers = {
 }
 
 def salva_historico():
+    collection = db_connection.get_collection('Historico')
     tag = input("Digite a TAG do usuário: ")
     url_historico = url+'players/'+tag+'/battlelog'
     response = requests.get(url=url_historico,headers=headers)
@@ -28,7 +29,20 @@ def salva_historico():
     for item in jsons:
         collection.insert_one(item)
 
+def salva_dados_jogador():
+    collection = db_connection.get_collection('Dados_jogador')
+    tag = input("Digite a TAG do usuário: ")
+    url_jogador = url+'players/'+tag
+    response = requests.get(url=url_jogador,headers=headers)
+    dados_jogador =json.loads(response.text)
+    vitorias = dados_jogador.get('wins')
+    derrotas = dados_jogador.get('losses')
+    partidas = vitorias+derrotas
+    win_rate = str(round((vitorias/partidas)*100 , 2))+'%'
 
+    dados_jogador['win_rate'] = win_rate
+
+    collection.insert_one(dados_jogador)
 
 def get_player_data():
     tag = input("Digite a TAG do usuário: ")
@@ -75,5 +89,4 @@ def get_player_history():
         else:
             print('derrota')
 
-
-salva_historico()
+salva_dados_jogador()
