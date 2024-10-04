@@ -107,10 +107,12 @@ while True:
             salva_dados_jogador()
             sleep(2)
         case '2':
-            get_player_data()
+            dado_player =get_player_data()
+            print(dado_player)
             sleep(2)
         case '3':
-            get_player_history()
+            historico_player = get_player_history()
+            print(historico_player)
             sleep(2)
         case '4':
             print('Saindo do sistema...')
