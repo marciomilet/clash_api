@@ -1,3 +1,4 @@
+import urllib.parse
 import requests
 import json
 import os
@@ -6,6 +7,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
+
 token = os.getenv('authorization')
 url = 'https://api.clashroyale.com/v1/'
 connection_string = os.getenv('connection')
@@ -13,16 +16,15 @@ client = MongoClient(connection_string)
 db_connection = client['ClashRoyale']
 
 
-
-
 headers = {
     'Content-type': 'application/json',
     'Authorization': token
 }
 
+
 def salva_historico():
     collection = db_connection.get_collection('Historico')
-    tag = input("Digite a TAG do usuário: ")
+    tag = urllib.parse.quote(input("Digite a TAG do usuário: "))
     url_historico = url+'players/'+tag+'/battlelog'
     response = requests.get(url=url_historico,headers=headers)
     jsons = json.loads(response.text)
@@ -31,7 +33,7 @@ def salva_historico():
 
 def salva_dados_jogador():
     collection = db_connection.get_collection('Dados_jogador')
-    tag = input("Digite a TAG do usuário: ")
+    tag = urllib.parse.quote(input("Digite a TAG do usuário: "))
     url_jogador = url+'players/'+tag
     response = requests.get(url=url_jogador,headers=headers)
     dados_jogador =json.loads(response.text)
@@ -39,13 +41,11 @@ def salva_dados_jogador():
     derrotas = dados_jogador.get('losses')
     partidas = vitorias+derrotas
     win_rate = str(round((vitorias/partidas)*100 , 2))+'%'
-
     dados_jogador['win_rate'] = win_rate
-
     collection.insert_one(dados_jogador)
 
 def get_player_data():
-    tag = input("Digite a TAG do usuário: ")
+    tag = urllib.parse.quote(input("Digite a TAG do usuário: "))
     url_player = url+'players/'+tag
     response = requests.get(url=url_player,headers=headers)
 
@@ -70,7 +70,7 @@ def get_all_cards():
         print('erro na requisição')
 
 def get_player_history():
-    tag = input("Digite a TAG do usuário: ")
+    tag = urllib.parse.quote(input("Digite a TAG do usuário: "))
     url_historico = url+'players/'+tag+'/battlelog'
     response = requests.get(url=url_historico,headers=headers)
     resposta_lista = json.loads(response.text)
@@ -89,4 +89,4 @@ def get_player_history():
         else:
             print('derrota')
 
-salva_dados_jogador()
+salva_historico()

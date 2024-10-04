@@ -1,0 +1,58 @@
+// Calcula porcentagem de vitoria de acordo com uma carta especificada
+[
+    {
+        "$match": {
+            "team.cards.name": "Mega Knight"
+        }
+    },
+    {
+        "$group": {
+            "_id": null,
+            "totalPartidas": { "$sum": 1 },
+            "vitorias": {
+                "$sum": {
+                    "$cond": [{ "$gt": ["$team.crowns", "$opponent.crowns"] }, 1, 0]
+                }
+            }
+        }
+    },
+    {
+        "$project": {
+            "porcentagemVitorias": {
+                "$multiply": [
+                    { "$divide": ["$vitorias", "$totalPartidas"] },
+                    100
+                ]
+            },
+            "totalPartidas": 1,
+            "vitorias": 1
+        }
+    }
+]
+
+// Atualiza todos os documentos para adicionar a vitoria
+db.Historico.updateMany(
+  {},  
+  [
+    {
+      $set: {
+        "team": {
+          $map: {
+            input: "$team",
+            as: "player",
+            in: {
+              $mergeObjects: [
+                "$$player",
+                { 
+                  vitoria: { 
+                    $gt: ["$$player.crowns", { $arrayElemAt: ["$opponent.crowns", 0] }]
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ]
+)
