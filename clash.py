@@ -4,9 +4,9 @@ import json
 import os
 from pymongo import MongoClient
 from dotenv import load_dotenv
+from time import sleep
 
 load_dotenv()
-
 
 
 token = os.getenv('authorization')
@@ -30,6 +30,8 @@ def salva_historico():
     jsons = json.loads(response.text)
     for item in jsons:
         collection.insert_one(item)
+    print("Historico inserido!")
+    
 
 def salva_dados_jogador():
     collection = db_connection.get_collection('Dados_jogador')
@@ -89,4 +91,27 @@ def get_player_history():
         else:
             print('derrota')
 
-salva_historico()
+def menu():
+    print("\n" *(os.get_terminal_size().lines - 1))
+    print("=" * os.get_terminal_size().columns)
+    print(F"[0] salvar historico de conta \n [1] salvar dados do jogador \n [2] buscar dados de um jogador \n [3] buscar historico de um jogador \n [4] SAIR ")
+    opcao = input()
+    return opcao
+while True:
+    opcao = menu()
+    match opcao:
+        case '0':
+            salva_historico()
+            sleep(2)
+        case '1':
+            salva_dados_jogador()
+            sleep(2)
+        case '2':
+            get_player_data()
+            sleep(2)
+        case '3':
+            get_player_history()
+            sleep(2)
+        case '4':
+            print('Saindo do sistema...')
+            break

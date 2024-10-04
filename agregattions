@@ -1,8 +1,12 @@
-// Calcula porcentagem de vitoria de acordo com uma carta especificada
+// Calcula porcentagem de vitoria de acordo com uma carta especificada em um determinado tempo
 [
     {
         "$match": {
-            "team.cards.name": "Mega Knight"
+            "battleTime": {
+                "$gte": "20241001T000000.000Z", // Data de início
+                "$lt": "20241004T000000.000Z"   // Data de fim
+            },
+            "team.cards.name": "Mega Knight" // Filtra cartas chamadas de "Mega Knight"
         }
     },
     {
@@ -56,3 +60,239 @@ db.Historico.updateMany(
     }
   ]
 )
+
+
+
+//Lista os decks completos que tiveram mais de uma % de vitoria em um intervalo de tempo
+  db.Historico.aggregate([
+    {
+      $match: {
+        battleTime: {
+          $gte: "20241002T000000.000Z", // Data de início: 2 de outubro de 2024
+          $lt: "20241003T000000.000Z"   // Data de fim: 3 de outubro de 2024
+        }
+      }
+    },
+    {
+      $unwind: "$team" // Desagrupar o array team para poder acessar as cartas
+    },
+    {
+      $group: {
+        _id: {
+          tag: "$team.tag", // Agrupar pelo tag da equipe
+          name: "$team.name", // Incluir o nome da equipe
+          cards: "$team.cards" // Incluir as cartas utilizadas
+        },
+        totalGames: { $sum: 1 }, // Contagem total de partidas
+        wins: { $sum: { $cond: ["$team.vitoria", 1, 0] } } // Contagem de vitórias
+      }
+    },
+    {
+      $project: {
+        deck: {
+          tag: "$_id.tag",
+          name: "$_id.name",
+          cards: "$_id.cards" // Retornar as cartas utilizadas
+        },
+        totalGames: 1, // Incluir o total de jogos
+        wins: 1, // Incluir o total de vitórias
+        winRate: { $multiply: [{ $divide: ["$wins", "$totalGames"] }, 100] } // Calculando a porcentagem de vitórias
+      }
+    },
+    {
+      $match: {
+        winRate: { $gt: 30 } // Filtrando decks com mais de X% de vitórias
+      }
+    }
+  ]).pretty()
+  
+
+  //Retorna a quantidade de derrotas utilizando um determinado combo de cartas em um determinado tempo
+  [
+    {
+      $match: {
+        battleTime: {
+          $gte: "20241001T000000.000Z",
+          $lte: "20241004T000000.000Z"
+        },
+        "team.cards.name": { $all: ["Mega Knight", "Zap", "Bats"] },
+        $expr: {
+          $gt: ["$opponent.crowns", "$team.crowns"]
+        }
+      }
+    },
+    {
+      $count: "derrotas"
+    },
+    {
+      $facet: {
+        resultados: [{ $addFields: { derrotas: "$derrotas" } }],
+        default: [{ $addFields: { derrotas: 0 } }]
+      }
+    },
+    {
+      $project: {
+        derrotas: {
+          $ifNull: [{ $arrayElemAt: ["$resultados.derrotas", 0] }, 0]
+        }
+      }
+    }
+  ]
+
+
+//Calculando a quantidade de vitorias de uma carta  nos casos em que o vencedor tem menos trofeus que o perdedor
+[
+    {
+      '$match': {
+        // Condição para incluir apenas partidas onde o time vencedor tem menos troféus que o perdedor
+        '$expr': { '$lt': ['$team.trophyChange', 0] }
+      }
+    },
+    {
+      '$unwind': '$team'
+    },
+    {
+      '$unwind': '$opponent'
+    },
+    {
+      '$match': {
+        'team.cards.name': 'NomeDaCarta',  // Substitua 'NomeDaCarta' pelo nome da carta que você quer filtrar
+        '$expr': { '$gt': ['$team.crowns', '$opponent.crowns'] }  // Garantindo que o time tenha vencido
+      }
+    },
+    {
+      '$group': {
+        '_id': null,
+        'totalVitorias': { '$sum': 1 }  // Contando as vitórias
+      }
+    },
+    {
+      '$project': {
+        '_id': 0,
+        'totalVitorias': 1  // Exibindo apenas o total de vitórias
+      }
+    }
+  ]
+  
+
+
+
+//Listando um combo de cartas que produziram mais de uma determinada porcentagem de vitoria em um intervalo de tempo
+[
+  {
+    '$match': {
+      'battleTime': { '$gte': "20241001T000000.000Z", '$lte': "20241004T000000.000Z" }
+    }
+  },
+  {
+    '$unwind': '$team'
+  },
+  {
+    '$project': {
+      'cards': '$team.cards.name',
+      'crowns': '$team.crowns',
+      'opponent_crowns': { '$arrayElemAt': ['$opponent.crowns', 0] }
+    }
+  },
+  {
+    '$match': {
+      '$expr': { '$gte': [{ '$size': '$cards' }, 5] }
+    }
+  },
+  {
+    '$project': {
+      'combo': { '$slice': ['$cards', 5] },
+      'win': { '$gt': ['$crowns', '$opponent_crowns'] }
+    }
+  },
+  {
+    '$group': {
+      '_id': '$combo',
+      'total': { '$sum': 1 },
+      'wins': { '$sum': { '$cond': ['$win', 1, 0] } }
+    }
+  },
+  {
+    '$project': {
+      'combo': '$_id',
+      'win_rate': { '$multiply': [{ '$divide': ['$wins', '$total'] }, 100] },
+      'total': 1,
+      'wins': 1
+    }
+  },
+  {
+    '$match': {
+      'win_rate': { '$gt': 20 }
+    }
+  }
+]
+
+
+//quantidade de vitoria de uma carta nos casos em que o vencedor possui menos trofeus do que o perdedor
+[
+    {
+      '$unwind': '$team'
+    },
+    {
+      '$unwind': '$opponent'
+    },
+    {
+      '$match': {
+        'battleTime': {
+          '$gte': '20241001T000000.000Z',  // Data de início do intervalo
+          '$lte': '20241004T000000.000Z'   // Data de fim do intervalo
+        },
+        'team.cards.name': 'Mega Knight',  // Substitua 'NomeDaCarta' pela carta desejada
+        'team.startingTrophies': { '$exists': true },
+        'opponent.startingTrophies': { '$exists': true },
+        '$expr': {
+          '$and': [
+            { '$gt': ['$team.crowns', '$opponent.crowns'] },  // Time venceu
+            { '$lt': ['$team.startingTrophies', '$opponent.startingTrophies'] }  // Time tinha menos troféus
+          ]
+        }
+      }
+    },
+    {
+      '$group': {
+        '_id': null,
+        'totalVitorias': { '$sum': 1 }
+      }
+    },
+    {
+      '$project': {
+        '_id': 0,
+        'totalVitorias': 1
+      }
+    }
+  ]
+  
+
+//Combinação de cartas que mais ganham em jogadores de alto nivel
+[
+    {
+      '$unwind': '$team'
+    },
+    {
+      '$match': {
+        'team.startingTrophies': { '$gte': 5000 },  // Jogadores com mais de 5000 troféus
+        'battleTime': {
+          '$gte': '20241001T000000.000Z',
+          '$lte': '20241004T000000.000Z'
+        }
+      }
+    },
+    {
+      '$group': {
+        '_id': '$team.cards.name',
+        'totalUsos': { '$sum': 1 }
+      }
+    },
+    {
+      '$sort': { 'totalUsos': -1 }
+    },
+    {
+      '$limit': 10
+    }
+  ]
+  
