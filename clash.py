@@ -50,13 +50,9 @@ def get_player_data():
     tag = urllib.parse.quote(input("Digite a TAG do usuário: "))
     url_player = url+'players/'+tag
     response = requests.get(url=url_player,headers=headers)
+    resposta = json.loads(response.text)
+    return resposta
 
-    if(response.status_code == 200):
-        resposta = json.loads(response.text)
-        vitorias = resposta.get('wins')
-        derrotas = resposta.get('losses')
-        partidas = vitorias+derrotas
-        win_rate = str(round((vitorias/partidas)*100 , 2))+'%'
 
 def get_all_cards():
     response = requests.get(url=url+'cards',headers=headers)
@@ -107,7 +103,7 @@ while True:
             salva_dados_jogador()
             sleep(2)
         case '2':
-            dado_player =get_player_data()
+            dado_player = get_player_data()
             print(dado_player)
             sleep(2)
         case '3':
